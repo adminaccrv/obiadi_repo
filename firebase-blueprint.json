@@ -1,0 +1,97 @@
+{
+  "entities": {
+    "Campaign": {
+      "title": "Campaign",
+      "description": "An email marketing campaign",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "subject": { "type": "string" },
+        "content": { "type": "string" },
+        "status": { "type": "string", "enum": ["draft", "sending", "completed", "paused", "scheduled"] },
+        "sentCount": { "type": "number" },
+        "totalCount": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "scheduledAt": { "type": "string", "format": "date-time" },
+        "replyTo": { "type": "string", "format": "email" },
+        "ownerId": { "type": "string" },
+        "abTest": {
+          "type": "object",
+          "properties": {
+            "enabled": { "type": "boolean" },
+            "variantB": {
+              "type": "object",
+              "properties": {
+                "subject": { "type": "string" },
+                "content": { "type": "string" }
+              }
+            },
+            "splitPercentage": { "type": "number" }
+          }
+        }
+      },
+      "required": ["name", "status", "ownerId", "createdAt"]
+    },
+    "Recipient": {
+      "title": "Recipient",
+      "description": "An email node/recipient",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "name": { "type": "string" },
+        "status": { "type": "string", "enum": ["verified", "bounced", "unsubscribed"] },
+        "lastActive": { "type": "string" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["email", "ownerId"]
+    },
+    "Template": {
+      "title": "Template",
+      "description": "An email content blueprint",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "subject": { "type": "string" },
+        "content": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "ownerId": { "type": "string" }
+      },
+      "required": ["name", "ownerId"]
+    },
+    "SmtpConfig": {
+      "title": "SmtpConfig",
+      "description": "User SMTP config details",
+      "type": "object",
+      "properties": {
+        "host": { "type": "string" },
+        "port": { "type": "number" },
+        "username": { "type": "string" },
+        "password": { "type": "string" },
+        "senderName": { "type": "string" },
+        "senderEmail": { "type": "string" },
+        "secure": { "type": "boolean" },
+        "ownerId": { "type": "string" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["host", "port", "ownerId"]
+    }
+  },
+  "firestore": {
+    "/settings/{userId}": {
+      "schema": "SmtpConfig",
+      "description": "User-specific secure SMTP credentials"
+    },
+    "/campaigns/{campaignId}": {
+      "schema": "Campaign",
+      "description": "Collection of marketing campaigns"
+    },
+    "/recipients/{recipientId}": {
+      "schema": "Recipient",
+      "description": "Global or user-specific recipient inventory"
+    },
+    "/templates/{templateId}": {
+      "schema": "Template",
+      "description": "Reusable email content patterns"
+    }
+  }
+}

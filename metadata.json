@@ -1,0 +1,8 @@
+{
+  "name": "PulseMail Bulk Sender",
+  "description": "High-performance bulk email campaign manager and advanced Interactive PulseMail Nexus professional workspace for secure bulk transmissions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

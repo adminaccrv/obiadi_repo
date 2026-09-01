@@ -1,0 +1,113 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(resourceData) {
+      return isSignedIn() && resourceData.ownerId == request.auth.uid;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Entity Validations ---
+    function isValidCampaign(data) {
+      return data.keys().hasAll(['name', 'status', 'ownerId', 'createdAt']) && 
+             data.keys().size() <= 15 && // Bounded keys
+             data.name is string && data.name.size() > 0 && data.name.size() < 256 &&
+             data.status in ['draft', 'sending', 'completed', 'paused', 'scheduled'] &&
+             data.ownerId == request.auth.uid &&
+             data.createdAt == request.time;
+    }
+
+    function isValidRecipient(data) {
+      return data.keys().hasAll(['email', 'ownerId']) &&
+             data.email is string && data.email.size() > 5 && data.email.size() < 256 &&
+             data.ownerId == request.auth.uid;
+    }
+
+    function isValidTemplate(data) {
+      return data.keys().hasAll(['name', 'ownerId']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 256 &&
+             data.ownerId == request.auth.uid;
+    }
+
+    function isValidSmtpConfig(data) {
+      return data.keys().hasAll(['host', 'port', 'ownerId']) &&
+             data.host is string && data.host.size() > 0 && data.host.size() < 256 &&
+             data.port is number &&
+             data.ownerId == request.auth.uid;
+    }
+
+    // --- Collections ---
+
+    match /campaigns/{campaignId} {
+      allow get: if isOwner(existing());
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && isValidCampaign(incoming());
+      allow update: if (
+        isOwner(existing()) &&
+        isValidCampaign(incoming()) && (
+          // General update
+          incoming().diff(existing()).affectedKeys().hasOnly(['name', 'subject', 'content', 'status', 'sentCount', 'totalCount', 'scheduledAt', 'replyTo', 'abTest']) &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().ownerId == existing().ownerId
+        )
+      );
+      allow delete: if isOwner(existing());
+    }
+
+    match /recipients/{recipientId} {
+      allow get: if isOwner(existing());
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && isValidRecipient(incoming());
+      allow update: if (
+        isOwner(existing()) &&
+        isValidRecipient(incoming()) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'status', 'lastActive']) &&
+        incoming().ownerId == existing().ownerId
+      );
+      allow delete: if isOwner(existing());
+    }
+
+    match /templates/{templateId} {
+      allow get: if isOwner(existing());
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && isValidTemplate(incoming());
+      allow update: if (
+        isOwner(existing()) &&
+        isValidTemplate(incoming()) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'subject', 'content', 'updatedAt']) &&
+        incoming().ownerId == existing().ownerId
+      );
+      allow delete: if isOwner(existing());
+    }
+
+    match /settings/{userId} {
+      allow get: if isSignedIn() && userId == request.auth.uid;
+      allow create: if isSignedIn() && userId == request.auth.uid && isValidSmtpConfig(incoming());
+      allow update: if isSignedIn() && userId == request.auth.uid && isValidSmtpConfig(incoming()) && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['host', 'port', 'username', 'password', 'senderName', 'senderEmail', 'secure', 'updatedAt']) &&
+        incoming().ownerId == existing().ownerId
+      );
+      allow delete: if isSignedIn() && userId == request.auth.uid;
+    }
+  }
+}
